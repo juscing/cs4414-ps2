@@ -77,7 +77,7 @@ impl Shell {
     
         if argv.len() > 1 {
             let pstring: ~str = argv.remove(1);
-            println!("You want to change cwd to {:s}", pstring);
+            println!("You want to change cwd to {:s} that's cool", pstring);
         }
     }
 }
