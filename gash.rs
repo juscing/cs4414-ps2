@@ -44,6 +44,7 @@ impl Shell {
             match program {
                 ""      =>  { continue; }
                 "exit"  =>  { return; }
+                "cd"	=>  { self.changeDir(cmd_line); }
                 _       =>  { self.run_cmdline(cmd_line); }
             }
         }
@@ -70,6 +71,17 @@ impl Shell {
     fn cmd_exists(&mut self, cmd_path: &str) -> bool {
         let ret = run::process_output("which", [cmd_path.to_owned()]);
         return ret.expect("exit code error.").status.success();
+    }
+    
+    //Justin's function for cd
+    fn changeDir(&mut self, cmd_line: &str) {
+	let mut argv: ~[~str] =
+            cmd_line.split(' ').filter_map(|x| if x != "" { Some(x.to_owned()) } else { None }).to_owned_vec();
+    
+        if argv.len() > 1 {
+            let pstring: ~str = argv.remove(1);
+            println!("You want to change cwd to {:s} that's cool", pstring);
+        }
     }
 }
 
