@@ -65,6 +65,24 @@ impl Shell {
     
         if argv.len() > 0 {
             let program: ~str = argv.remove(0);
+            
+            //Let's process the argv
+            
+            let endopt = argv.pop_opt();
+            let end = match endopt {
+		Some(stringy) => { stringy }
+		None => { ~"" }
+            };
+            
+            if end.eq(&~"&") {
+		println("Start in a new process" + end);
+            } else {
+		println("No new process");
+		if !end.eq(&~"") {
+		    argv.push(end.to_owned());
+		}
+            }
+            
             self.run_cmd(program, argv);
         }
     }
@@ -73,6 +91,9 @@ impl Shell {
         if self.cmd_exists(program) {
 	    // Old stuff
             // run::process_status(program, argv);
+            
+            //println("Run command hit");
+            //println(program);
             
             let mut whichprocop = ProcessOptions::new();
 	    whichprocop.dir = self.cwdopt.as_ref();
@@ -90,7 +111,7 @@ impl Shell {
     fn cmd_exists(&mut self, cmd_path: &str) -> bool {
         //let ret = run::process_output("which", [cmd_path.to_owned()]);
         //return ret.expect("exit code error.").status.success();
-        
+        println("cmd_exists hit");
         let mut whichprocop = ProcessOptions::new();
         whichprocop.dir = self.cwdopt.as_ref();
         
