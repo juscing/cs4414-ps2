@@ -19,10 +19,15 @@ use std::io::buffered::BufferedReader;
 use std::io::stdin;
 use std::os::getcwd;
 use extra::getopts;
+use std::run::Process;
+use std::run::ProcessOutput;
+use std::run::ProcessOptions;
+use std::option::{Option, None, Some};
 
 struct Shell {
     cmd_prompt: ~str,
     cwd: Path,
+    cwdopt: Option<Path>,
 }
 
 impl Shell {
@@ -30,6 +35,7 @@ impl Shell {
         Shell {
             cmd_prompt: prompt_str.to_owned(),
             cwd: getcwd(),
+            cwdopt: Some(getcwd()),
         }
     }
     
@@ -65,15 +71,33 @@ impl Shell {
     
     fn run_cmd(&mut self, program: &str, argv: &[~str]) {
         if self.cmd_exists(program) {
-            run::process_status(program, argv);
+	    // Old stuff
+            // run::process_status(program, argv);
+            
+            let mut whichprocop = ProcessOptions::new();
+	    whichprocop.dir = self.cwdopt.as_ref();
+	    
+	    let mut whichproc = Process::new(program, argv, whichprocop);
+	    let mut process = whichproc.unwrap();
+	    let mut procout = process.finish_with_output();
+	    println(std::str::from_utf8(procout.output));
+            
         } else {
             println!("{:s}: command not found", program);
         }
     }
     
     fn cmd_exists(&mut self, cmd_path: &str) -> bool {
-        let ret = run::process_output("which", [cmd_path.to_owned()]);
-        return ret.expect("exit code error.").status.success();
+        //let ret = run::process_output("which", [cmd_path.to_owned()]);
+        //return ret.expect("exit code error.").status.success();
+        
+        let mut whichprocop = ProcessOptions::new();
+        whichprocop.dir = self.cwdopt.as_ref();
+        
+        let mut whichproc = Process::new("which", [cmd_path.to_owned()], whichprocop);
+        let mut process = whichproc.unwrap();
+	let mut procout = process.finish();
+        procout.success()
     }
     
     //Justin's function for cd
@@ -92,7 +116,9 @@ impl Shell {
             cpath.push(npath);
             
             if cpath.exists() {
+		let mut cpathforopt = cpath.clone();
 		self.cwd = cpath;
+		self.cwdopt = Some(cpathforopt);
             } else {
 		println("Path does not exist!");
             }
