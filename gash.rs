@@ -85,9 +85,7 @@ impl Shell {
         if argv.len() > 1 {
             let pstring: ~str = argv.remove(1);
             
-            println!("You want to change cwd to {:s}", pstring);
-            // See if we have the current cwd
-            //println!("The current cwd is {:s}" , self.cwd.as_str());
+            //println!("You want to change cwd to {:s}", pstring);
             
             let mut npath = Path::new(pstring);
             
