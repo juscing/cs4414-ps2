@@ -9,7 +9,7 @@
 // Version 0.4
 //
 /*
-Vikram Bhasin vb8nd
+Vikram Bhasin vb8nd and Justin Ingram jci5kb
 */
 
 extern mod extra;
@@ -17,16 +17,20 @@ extern mod extra;
 use std::{io, run, os};
 use std::io::buffered::BufferedReader;
 use std::io::stdin;
+use std::os::getcwd;
 use extra::getopts;
+use std::Path;
 
 struct Shell {
     cmd_prompt: ~str,
+    cwd: Path,
 }
 
 impl Shell {
     fn new(prompt_str: &str) -> Shell {
         Shell {
             cmd_prompt: prompt_str.to_owned(),
+            cwd: getcwd(),
         }
     }
     
@@ -80,7 +84,26 @@ impl Shell {
     
         if argv.len() > 1 {
             let pstring: ~str = argv.remove(1);
-            println!("You want to change cwd to {:s} that's cool", pstring);
+            
+            println!("You want to change cwd to {:s}", pstring);
+            // See if we have the current cwd
+            //println!("The current cwd is {:s}" , self.cwd.as_str());
+            
+            let mut npath = Path::new(pstring);
+            
+            let mut cpath = self.cwd.clone();
+            cpath.push(npath);
+            
+            if cpath.exists() {
+		self.cwd = cpath;
+            } else {
+		println("Path does not exist!");
+            }
+            
+        }
+        match self.cwd.as_str() {
+	    Some(path_str) => {println!("{:s}", path_str); }
+	    None	=> {println("Path not representable as string!"); }
         }
     }
 }
