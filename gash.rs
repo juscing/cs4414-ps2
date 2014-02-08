@@ -19,7 +19,6 @@ use std::io::buffered::BufferedReader;
 use std::io::stdin;
 use std::os::getcwd;
 use extra::getopts;
-use std::Path;
 
 struct Shell {
     cmd_prompt: ~str,
@@ -87,7 +86,7 @@ impl Shell {
             
             //println!("You want to change cwd to {:s}", pstring);
             
-            let mut npath = Path::new(pstring);
+            let npath = Path::new(pstring);
             
             let mut cpath = self.cwd.clone();
             cpath.push(npath);
