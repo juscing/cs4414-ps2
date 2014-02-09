@@ -52,7 +52,7 @@ impl Shell {
                 ""      =>  { continue; }
                 "exit"  =>  { return; }
                 "cd"	=>  { self.changeDir(cmd_line); }
-                "history" =>{ self.history(cmd_line); }
+                "history" =>{ self.history(); }
                 _       =>  { self.run_cmdline(cmd_line); }
             }
         }
@@ -64,7 +64,7 @@ impl Shell {
     
         if argv.len() > 0 {
             let program: ~str = argv.remove(0);
-            
+            self.hist.push(program.clone());
             //Let's process the argv
             
             let endopt = argv.pop_opt();
@@ -155,8 +155,11 @@ impl Shell {
         }
     }
     
-    fn history(&mut self, cmd_line: &str) {
-      //let mut argv: ~[~str] = 
+    fn history(&mut self) {
+	for stringy in self.hist.iter() {
+	    let x = stringy.clone();
+	    println(x);
+	}
     }
 }
 
