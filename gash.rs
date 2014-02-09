@@ -47,7 +47,7 @@ impl Shell {
             let line = stdin.read_line().unwrap();
             let cmd_line = line.trim().to_owned();
             let program = cmd_line.splitn(' ', 1).nth(0).expect("no program");
-            
+            self.hist.push(program.to_owned());
             match program {
                 ""      =>  { continue; }
                 "exit"  =>  { return; }
@@ -64,7 +64,6 @@ impl Shell {
     
         if argv.len() > 0 {
             let program: ~str = argv.remove(0);
-            self.hist.push(program.clone());
             //Let's process the argv
             
             let endopt = argv.pop_opt();
