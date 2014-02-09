@@ -50,7 +50,7 @@ impl Shell {
             let line = stdin.read_line().unwrap();
             let cmd_line = line.trim().to_owned();
             let program = cmd_line.splitn(' ', 1).nth(0).expect("no program");
-            self.hist.push(program.to_owned());
+            self.hist.push(line);
             match program {
                 ""      =>  { continue; }
                 "exit"  =>  { return; }
@@ -151,7 +151,7 @@ impl Shell {
 	let mut n :int = 1;
 	for stringy in self.hist.iter() {
 	    let x = stringy.clone();
-	    println(n.to_str() + ~"\t" + x);
+	    print(n.to_str() + ~"\t" + x);
 	    n += 1;
 	}
     }
