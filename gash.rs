@@ -26,6 +26,7 @@ use std::option::{Option, None, Some};
 
 struct Shell {
     cmd_prompt: ~str,
+    //vector 
 }
 
 impl Shell {
@@ -50,6 +51,7 @@ impl Shell {
                 ""      =>  { continue; }
                 "exit"  =>  { return; }
                 "cd"	=>  { self.changeDir(cmd_line); }
+                "history" =>{ self.history(cmd_line); }
                 _       =>  { self.run_cmdline(cmd_line); }
             }
         }
@@ -150,6 +152,10 @@ impl Shell {
 	    Some(path_str) => {println!("{:s}", path_str); }
 	    None	=> {println("Path not representable as string!"); }
         }
+    }
+    
+    fn history(&mut self, cmd_line: &str) {
+      //let mut argv: ~[~str] = 
     }
 }
 
