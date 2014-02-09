@@ -26,13 +26,14 @@ use std::option::{Option, None, Some};
 
 struct Shell {
     cmd_prompt: ~str,
-    //vector 
+    hist: ~[~str],
 }
 
 impl Shell {
     fn new(prompt_str: &str) -> Shell {
         Shell {
             cmd_prompt: prompt_str.to_owned(),
+            hist: ~[],
         }
     }
     
