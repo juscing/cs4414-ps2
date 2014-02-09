@@ -28,6 +28,7 @@ use std::io::File;
 use std::comm::Chan;
 use std::io::signal::Listener;
 use std::io::signal::{Interrupt};
+use std::libc;
 
 struct Shell {
     cmd_prompt: ~str,
@@ -79,6 +80,7 @@ impl Shell {
                 "exit"  =>  { return; }
                 "cd"	=>  { self.changeDir(cmd_line); }
                 "history" =>{ self.history(); }
+                "gcowsay" => { self.cowsay(cmd_line); }
                 _       =>  { self.run_cmdline(cmd_line); }
             }
         }
@@ -98,19 +100,85 @@ impl Shell {
 		None => { ~"" }
             };
             
+            
+            
+            
             if end.eq(&~"&") {
 		// println("Start in a new process" + end);
+		
+		if argv.contains(&~">") {
+		    println("Contains >");
+		}
+		
 		self.run_cmd(program, argv, true);
             } else {
 		//println("No new process");
 		if !end.eq(&~"") {
 		    argv.push(end.to_owned());
 		}
-		self.run_cmd(program, argv, false);
+		
+		if argv.contains(&~">") {
+		    //println("Contains >");
+		    let mut found = false;
+		    let mut filename = ~"";
+		    let mut x = 0;
+		    for stringy in argv.clone().move_iter() {
+			if stringy.eq(&~">") {
+			    break;
+			}
+			x += 1;
+		    }
+		    match argv.get_opt(x+1) {
+			Some(text) => { filename = text.to_owned(); }
+			None => {}
+		    }
+		    argv.remove(x+1);
+		    argv.remove(x);
+		    self.run_cmd_out(program, argv, filename, false);
+		} else {
+		    self.run_cmd(program, argv, false);
+		}
             }
+        }
+    }
+    
+    fn run_cmd_out(&mut self, program: &str, argv: &[~str], filename: &str, bg: bool) {
+        if self.cmd_exists(program) {
+	    // Old stuff
             
             
+            //println("Run command hit");
+            //println(program);
             
+            
+	    if !bg {
+		// run::process_status(program, argv);
+		let mut whichprocop = ProcessOptions::new();
+		unsafe {
+		    whichprocop.out_fd = Some(libc::fileno(libc::fopen(filename.to_c_str().unwrap(), "w".to_c_str().unwrap())));
+		}
+		
+	    } else {
+		//let f = self.makefunky(program, argv);
+		//let (recvp, recvc): (Port<~str>, Chan<~str>) = Chan::new();
+		//spawn(expr(f(program, argv)));
+		
+		let x = program.clone().to_owned();
+		let y = argv.clone().to_owned();
+		
+		spawn(proc() {
+		    let mut whichprocop = ProcessOptions::new();
+		    match(Process::new(x, y, whichprocop)) {
+			Some(mut process) => {
+			    process.finish();
+			}
+			None => { println("ERROR"); }
+		    }
+		});
+	    }
+            
+        } else {
+            println!("{:s}: command not found", program);
         }
     }
     
@@ -208,6 +276,29 @@ impl Shell {
 	    print("[" + n.to_str() + "]" + ~"\t" + x);
 	    n += 1;
 	}
+    }
+    
+    fn cowsay(&mut self, cmd_line: &str) {
+	let mut argv: ~[~str] =
+            cmd_line.split(' ').filter_map(|x| if x != "" { Some(x.to_owned()) } else { None }).to_owned_vec();
+	let mut stringer = ~"";
+	
+	if argv.len() > 1 {
+	    argv.remove(0);
+	}
+	
+	for stringy in argv.iter() {
+	    stringer = stringer + ~" " + stringy.to_owned();
+	}
+	
+	println(" _______");
+	println("< " + stringer + " >");
+	println(" -------");
+	println("        \\   ^__^");
+	println("         \\  (oo)\\_______");
+	println("            (__)\\       )\\/\\");
+	println("                ||----w |");
+	println("                ||     ||");
     }
 }
 
