@@ -23,6 +23,8 @@ use std::run::Process;
 use std::run::ProcessOutput;
 use std::run::ProcessOptions;
 use std::option::{Option, None, Some};
+use std::io::buffered::BufferedWriter;
+use std::io::File;
 
 struct Shell {
     cmd_prompt: ~str,
@@ -31,6 +33,7 @@ struct Shell {
 
 impl Shell {
     fn new(prompt_str: &str) -> Shell {
+        
         Shell {
             cmd_prompt: prompt_str.to_owned(),
             hist: ~[],
@@ -109,16 +112,6 @@ impl Shell {
     fn cmd_exists(&mut self, cmd_path: &str) -> bool {
         let ret = run::process_output("which", [cmd_path.to_owned()]);
         return ret.expect("exit code error.").status.success();
-        /*
-        println("cmd_exists hit");
-        let mut whichprocop = ProcessOptions::new();
-        whichprocop.dir = self.cwdopt.as_ref();
-        
-        let mut whichproc = Process::new("which", [cmd_path.to_owned()], whichprocop);
-        let mut process = whichproc.unwrap();
-	let mut procout = process.finish();
-        procout.success()
-        */
     }
     
     //Justin's function for cd
@@ -155,9 +148,11 @@ impl Shell {
     }
     
     fn history(&mut self) {
+	let mut n :int = 1;
 	for stringy in self.hist.iter() {
 	    let x = stringy.clone();
-	    println(x);
+	    println(n.to_str() + ~"\t" + x);
+	    n += 1;
 	}
     }
 }
