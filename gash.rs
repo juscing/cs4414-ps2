@@ -26,16 +26,12 @@ use std::option::{Option, None, Some};
 
 struct Shell {
     cmd_prompt: ~str,
-    cwd: Path,
-    cwdopt: Option<Path>,
 }
 
 impl Shell {
     fn new(prompt_str: &str) -> Shell {
         Shell {
             cmd_prompt: prompt_str.to_owned(),
-            cwd: getcwd(),
-            cwdopt: Some(getcwd()),
         }
     }
     
@@ -90,11 +86,11 @@ impl Shell {
     fn run_cmd(&mut self, program: &str, argv: &[~str]) {
         if self.cmd_exists(program) {
 	    // Old stuff
-            // run::process_status(program, argv);
+            run::process_status(program, argv);
             
             //println("Run command hit");
             //println(program);
-            
+            /*
             let mut whichprocop = ProcessOptions::new();
 	    whichprocop.dir = self.cwdopt.as_ref();
 	    
@@ -102,15 +98,16 @@ impl Shell {
 	    let mut process = whichproc.unwrap();
 	    let mut procout = process.finish_with_output();
 	    println(std::str::from_utf8(procout.output));
-            
+            */
         } else {
             println!("{:s}: command not found", program);
         }
     }
     
     fn cmd_exists(&mut self, cmd_path: &str) -> bool {
-        //let ret = run::process_output("which", [cmd_path.to_owned()]);
-        //return ret.expect("exit code error.").status.success();
+        let ret = run::process_output("which", [cmd_path.to_owned()]);
+        return ret.expect("exit code error.").status.success();
+        /*
         println("cmd_exists hit");
         let mut whichprocop = ProcessOptions::new();
         whichprocop.dir = self.cwdopt.as_ref();
@@ -119,6 +116,7 @@ impl Shell {
         let mut process = whichproc.unwrap();
 	let mut procout = process.finish();
         procout.success()
+        */
     }
     
     //Justin's function for cd
@@ -133,19 +131,22 @@ impl Shell {
             
             let npath = Path::new(pstring);
             
-            let mut cpath = self.cwd.clone();
+            let mut cpath = getcwd();
             cpath.push(npath);
             
             if cpath.exists() {
 		let mut cpathforopt = cpath.clone();
-		self.cwd = cpath;
-		self.cwdopt = Some(cpathforopt);
+		std::os::change_dir(&cpath);
+		// self.cwd = cpath;
             } else {
 		println("Path does not exist!");
             }
             
         }
-        match self.cwd.as_str() {
+        
+        let x = getcwd();
+        
+        match x.as_str() {
 	    Some(path_str) => {println!("{:s}", path_str); }
 	    None	=> {println("Path not representable as string!"); }
         }
