@@ -180,7 +180,7 @@ impl Shell {
 	let mut n :int = 1;
 	for stringy in self.hist.iter() {
 	    let x = stringy.clone();
-	    print(n.to_str() + ~"\t" + x);
+	    print("[" + n.to_str() + "]" + ~"\t" + x);
 	    n += 1;
 	}
     }
