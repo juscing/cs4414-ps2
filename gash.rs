@@ -25,6 +25,7 @@ use std::run::ProcessOptions;
 use std::option::{Option, None, Some};
 use std::io::buffered::BufferedWriter;
 use std::io::File;
+use std::comm::Chan;
 
 struct Shell {
     cmd_prompt: ~str,
@@ -76,38 +77,66 @@ impl Shell {
             };
             
             if end.eq(&~"&") {
-		println("Start in a new process" + end);
+		// println("Start in a new process" + end);
+		self.run_cmd(program, argv, true);
             } else {
-		println("No new process");
+		//println("No new process");
 		if !end.eq(&~"") {
 		    argv.push(end.to_owned());
 		}
+		self.run_cmd(program, argv, false);
             }
-            
-            self.run_cmd(program, argv);
         }
     }
     
-    fn run_cmd(&mut self, program: &str, argv: &[~str]) {
+    fn run_cmd(&mut self, program: &str, argv: &[~str], bg: bool) {
         if self.cmd_exists(program) {
 	    // Old stuff
-            run::process_status(program, argv);
+            
             
             //println("Run command hit");
             //println(program);
-            /*
-            let mut whichprocop = ProcessOptions::new();
-	    whichprocop.dir = self.cwdopt.as_ref();
-	    
-	    let mut whichproc = Process::new(program, argv, whichprocop);
-	    let mut process = whichproc.unwrap();
-	    let mut procout = process.finish_with_output();
-	    println(std::str::from_utf8(procout.output));
-            */
+            
+            
+	    if !bg {
+		run::process_status(program, argv);
+	    } else {
+		//let f = self.makefunky(program, argv);
+		//let (recvp, recvc): (Port<~str>, Chan<~str>) = Chan::new();
+		//spawn(expr(f(program, argv)));
+		
+		let x = program.clone().to_owned();
+		let y = argv.clone().to_owned();
+		
+		spawn(proc() {
+		    let mut whichprocop = ProcessOptions::new();
+		    match(Process::new(x, y, whichprocop)) {
+			Some(mut process) => {
+			    process.finish();
+			}
+			None => { println("ERROR"); }
+		    }
+		});
+	    }
+            
         } else {
             println!("{:s}: command not found", program);
         }
     }
+    /*
+    fn makefunky(&mut self, program: &str, argv: &[~str]) -> (proc(&str, &[~str])) {
+	proc(program: &str, argv: &[~str]) {
+	    
+	    // whichprocop.dir = self.cwdopt.as_ref();
+	    
+	    let mut whichproc = Process::new(program, argv, whichprocop);
+	    let mut process = whichproc.unwrap();
+	    
+	    let mut procout = process.finish_with_output();
+	    println(std::str::from_utf8(procout.output));
+	}
+    }
+    */
     
     fn cmd_exists(&mut self, cmd_path: &str) -> bool {
         let ret = run::process_output("which", [cmd_path.to_owned()]);
