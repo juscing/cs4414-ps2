@@ -26,6 +26,8 @@ use std::option::{Option, None, Some};
 use std::io::buffered::BufferedWriter;
 use std::io::File;
 use std::comm::Chan;
+use std::io::signal::Listener;
+use std::io::signal::{Interrupt};
 
 struct Shell {
     cmd_prompt: ~str,
@@ -41,8 +43,28 @@ impl Shell {
         }
     }
     
+    fn listen(&mut self, list: Listener) {
+	spawn(proc() {
+	    loop {
+		match list.port.recv() {
+		    Interrupt => { }
+		    _ => { println("THERE WAS DERP"); }
+		}
+	    }
+	});
+    }
+    
     fn run(&mut self) {
         let mut stdin = BufferedReader::new(stdin());
+        
+        let mut x = Listener::new();
+	let reg = x.register(Interrupt);
+	
+	if reg {
+	    self.listen(x);
+	} else {
+	    println("Failed to register listener");
+	}
         
         loop {
             print(self.cmd_prompt);
@@ -86,6 +108,9 @@ impl Shell {
 		}
 		self.run_cmd(program, argv, false);
             }
+            
+            
+            
         }
     }
     
@@ -211,6 +236,7 @@ fn get_cmdline_from_args() -> Option<~str> {
 }
 
 fn main() {
+    
     let opt_cmd_line = get_cmdline_from_args();
     
     match opt_cmd_line {
