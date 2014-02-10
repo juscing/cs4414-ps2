@@ -99,13 +99,34 @@ impl Shell {
             let end = match endopt {
 		Some(stringy) => { stringy }
 		None => { ~"" }
-            };
-            
-            
+            };        
             
             
             if end.eq(&~"&") {
 		// println("Start in a new process" + end);
+		
+		if argv.contains(&~"<") {
+		   if argv.contains(&~"<") {
+		   let mut found = false;
+		   let mut filename = ~"";
+		   let mut x = 0;
+		   for stringy in argv.clone().move_iter() {
+			if stringy.eq(&~"<") {
+			    break;
+			}
+			x += 1;
+		    }
+		    match argv.get_opt(x+1) {
+			Some(text) => { filename = text.to_owned(); }
+			None => {}
+		    }
+		    argv.remove(x+1);
+		    argv.remove(x);
+		    self.run_cmd_in(program, argv, filename, true);
+		    }else {
+		      self.run_cmd(program, argv, true); 
+		}
+		}
 		
 		if argv.contains(&~">") {
 		    // println("Contains >");
