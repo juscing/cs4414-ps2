@@ -107,7 +107,28 @@ impl Shell {
 		// println("Start in a new process" + end);
 		
 		if argv.contains(&~">") {
-		    println("Contains >");
+		    // println("Contains >");
+		    if argv.contains(&~">") {
+		    //println("Contains >");
+		    let mut found = false;
+		    let mut filename = ~"";
+		    let mut x = 0;
+		    for stringy in argv.clone().move_iter() {
+			if stringy.eq(&~">") {
+			    break;
+			}
+			x += 1;
+		    }
+		    match argv.get_opt(x+1) {
+			Some(text) => { filename = text.to_owned(); }
+			None => {}
+		    }
+		    argv.remove(x+1);
+		    argv.remove(x);
+		    self.run_cmd_out(program, argv, filename, true);
+		} else {
+		    self.run_cmd(program, argv, true);
+		}
 		}
 		
 		self.run_cmd(program, argv, true);
@@ -157,6 +178,12 @@ impl Shell {
 		unsafe {
 		    whichprocop.out_fd = Some(libc::fileno(libc::fopen(filename.to_c_str().unwrap(), "w".to_c_str().unwrap())));
 		}
+		match(Process::new(program, argv, whichprocop)) {
+		    Some(mut process) => {
+			process.finish();
+		    }
+		    None => { println("ERROR"); }
+		}
 		
 	    } else {
 		//let f = self.makefunky(program, argv);
@@ -165,9 +192,13 @@ impl Shell {
 		
 		let x = program.clone().to_owned();
 		let y = argv.clone().to_owned();
+		let f = filename.clone().to_owned();
 		
 		spawn(proc() {
 		    let mut whichprocop = ProcessOptions::new();
+		    unsafe {
+			whichprocop.out_fd = Some(libc::fileno(libc::fopen(f.to_c_str().unwrap(), "w".to_c_str().unwrap())));
+		    }
 		    match(Process::new(x, y, whichprocop)) {
 			Some(mut process) => {
 			    process.finish();
