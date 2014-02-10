@@ -30,6 +30,7 @@ use std::io::signal::Listener;
 use std::io::signal::{Interrupt};
 use std::libc;
 use std::io::stdio;
+use std::os::Pipe;
 
 struct Shell {
     cmd_prompt: ~str,
@@ -82,9 +83,90 @@ impl Shell {
                 "cd"	=>  { self.changeDir(cmd_line); }
                 "history" =>{ self.history(); }
                 "gcowsay" => { self.cowsay(cmd_line); }
-                _       =>  { self.run_cmdline(cmd_line); }
+                _       =>  { self.pipe_syntax(cmd_line); }
             }
         }
+    }
+    
+    fn pipe_syntax(&mut self, cmd_line: &str) {
+	let mut commands: ~[~str] = cmd_line.split('|').filter_map(|x| if x != "" { Some(x.trim().to_owned()) } else { None }).to_owned_vec();
+	let mut count = 0;
+	let mut infd: libc::c_int = 0;
+	let mut outfd: libc::c_int = 0;
+	for stringy in commands.clone().move_iter() {
+	    // println(stringy);
+	    let mut argv: ~[~str] = stringy.split(' ').filter_map(|x| if x != "" { Some(x.to_owned()) } else { None }).to_owned_vec();
+    
+	    if argv.len() > 0 {
+		let program: ~str = argv.remove(0);
+		
+		if count == 0 && commands.len() == 1 {
+		    self.run_cmdline(stringy);
+		} else if count == 0 {
+		    if stringy.contains("<"){
+			let mut filename = ~"";
+			let mut x = 0;
+			for string1 in argv.clone().move_iter() {
+			    if string1.eq(&~"<") {
+				break;
+			    }
+			    x += 1;
+			}
+			match argv.get_opt(x+1) {
+			    Some(text) => { filename = text.to_owned(); }
+			    None => {}
+			}
+			argv.remove(x+1);
+			argv.remove(x);
+			let pi = std::os::pipe();
+			infd = pi.input;
+			outfd = pi.out;
+			if commands.len() > 1 {
+			    self.run_cmd_pipe_in(program, argv, pi.out, filename, false);
+			} else {
+			    self.run_cmd_in(program, argv, filename, false);
+			}
+		    }else{
+			let pi = std::os::pipe();
+			infd = pi.input;
+			outfd = pi.out;
+			if commands.len() > 1 {
+			    self.run_cmd_pipe(program, argv, 0, pi.out, false);
+			}else{
+			    self.run_cmd(program, argv, false);
+			}
+		    }
+		} else if count == (commands.len() - 1) {
+		    if stringy.contains(">") {
+			let mut filename = ~"";
+			let mut x = 0;
+			for string1 in argv.clone().move_iter() {
+			    if string1.eq(&~"<") {
+				break;
+			    }
+			    x += 1;
+			}
+			match argv.get_opt(x+1) {
+			    Some(text) => { filename = text.to_owned(); }
+			    None => {}
+			}
+			argv.remove(x+1);
+			argv.remove(x);
+			
+			self.run_cmd_pipe_out(program, argv, outfd, filename, false);
+			
+		    } else {
+			self.run_cmd_pipe(program, argv, outfd, 0, false);
+		    }
+		} else {
+		    let pi = std::os::pipe();
+		    infd = pi.input;
+		    self.run_cmd_pipe(program, argv, outfd, pi.input, false);
+		    outfd = pi.out;
+		}
+	    }
+	    count += 1;
+	}
     }
     
     fn run_cmdline(&mut self, cmd_line: &str) {
@@ -259,6 +341,149 @@ impl Shell {
         }
     }
     
+    fn run_cmd_pipe(&mut self, program: &str, argv: &[~str], fdin: libc::c_int, fdout: libc::c_int, bg: bool) {
+	if self.cmd_exists(program) {
+
+	    if !bg {
+		// run::process_status(program, argv);
+		let mut whichprocop = ProcessOptions::new();
+		unsafe {
+		    if (fdin != 0) {
+			whichprocop.in_fd = Some(fdin);
+		    }
+		    if (fdout != 0) {
+			whichprocop.out_fd = Some(fdout);
+		    }
+		}
+		match(Process::new(program, argv, whichprocop)) {
+		    Some(mut process) => {
+			process.finish();
+			//println("process finished");
+		    }
+		    None => { println("ERROR"); }
+		}
+		
+	    } else {
+		//let f = self.makefunky(program, argv);
+		//let (recvp, recvc): (Port<~str>, Chan<~str>) = Chan::new();
+		//spawn(expr(f(program, argv)));
+		
+		let x = program.clone().to_owned();
+		let y = argv.clone().to_owned();
+		
+		spawn(proc() {
+		    let mut whichprocop = ProcessOptions::new();
+		    unsafe {
+			whichprocop.in_fd = Some(fdin);
+			whichprocop.out_fd = Some(fdout);
+		    }
+		    match(Process::new(x, y, whichprocop)) {
+			Some(mut process) => {
+			    process.finish();
+			}
+			None => { println("ERROR"); }
+		    }
+		});
+	    }
+            
+        } else {
+            println!("{:s}: command not found", program);
+        }
+    }
+    
+    fn run_cmd_pipe_in(&mut self, program: &str, argv: &[~str], fdout: libc::c_int, filein: &str, bg: bool){
+	if self.cmd_exists(program) {
+
+	    if !bg {
+		// run::process_status(program, argv);
+		let mut whichprocop = ProcessOptions::new();
+		unsafe {
+		    whichprocop.in_fd = Some(libc::fileno(libc::fopen(filein.to_c_str().unwrap(), "r".to_c_str().unwrap())));
+		    whichprocop.out_fd = Some(fdout);
+		}
+		match(Process::new(program, argv, whichprocop)) {
+		    Some(mut process) => {
+			process.finish();
+			//println("process finished");
+		    }
+		    None => { println("ERROR"); }
+		}
+		
+	    } else {
+		//let f = self.makefunky(program, argv);
+		//let (recvp, recvc): (Port<~str>, Chan<~str>) = Chan::new();
+		//spawn(expr(f(program, argv)));
+		
+		let x = program.clone().to_owned();
+		let y = argv.clone().to_owned();
+		let f = filein.clone().to_owned();
+		
+		spawn(proc() {
+		    let mut whichprocop = ProcessOptions::new();
+		    unsafe {
+			whichprocop.in_fd = Some(libc::fileno(libc::fopen(f.to_c_str().unwrap(), "r".to_c_str().unwrap())));
+			whichprocop.out_fd = Some(fdout);
+		    }
+		    match(Process::new(x, y, whichprocop)) {
+			Some(mut process) => {
+			    process.finish();
+			}
+			None => { println("ERROR"); }
+		    }
+		});
+	    }
+            
+        } else {
+            println!("{:s}: command not found", program);
+        }
+    }
+    
+    fn run_cmd_pipe_out(&mut self, program: &str, argv: &[~str], fdin: libc::c_int, fileout: &str, bg: bool) {
+	if self.cmd_exists(program) {
+
+	    if !bg {
+		// run::process_status(program, argv);
+		let mut whichprocop = ProcessOptions::new();
+		unsafe {
+		    whichprocop.in_fd = Some(fdin);
+		    whichprocop.out_fd = Some(libc::fileno(libc::fopen(fileout.to_c_str().unwrap(), "w".to_c_str().unwrap())));
+		}
+		match(Process::new(program, argv, whichprocop)) {
+		    Some(mut process) => {
+			process.finish();
+			//println("process finished");
+		    }
+		    None => { println("ERROR"); }
+		}
+		
+	    } else {
+		//let f = self.makefunky(program, argv);
+		//let (recvp, recvc): (Port<~str>, Chan<~str>) = Chan::new();
+		//spawn(expr(f(program, argv)));
+		
+		let x = program.clone().to_owned();
+		let y = argv.clone().to_owned();
+		let f = fileout.clone().to_owned();
+		
+		spawn(proc() {
+		    let mut whichprocop = ProcessOptions::new();
+		    unsafe {
+			whichprocop.in_fd = Some(fdin);
+			whichprocop.out_fd = Some(libc::fileno(libc::fopen(f.to_c_str().unwrap(), "w".to_c_str().unwrap())));
+		    }
+		    match(Process::new(x, y, whichprocop)) {
+			Some(mut process) => {
+			    process.finish();
+			}
+			None => { println("ERROR"); }
+		    }
+		});
+	    }
+            
+        } else {
+            println!("{:s}: command not found", program);
+        }
+    }
     
     fn run_cmd_in_out(&mut self, program: &str, argv: &[~str], filein: &str, fileout: &str, bg: bool) {
         if self.cmd_exists(program) {
