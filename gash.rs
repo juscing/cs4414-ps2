@@ -29,6 +29,7 @@ use std::comm::Chan;
 use std::io::signal::Listener;
 use std::io::signal::{Interrupt};
 use std::libc;
+use std::io::stdio;
 
 struct Shell {
     cmd_prompt: ~str,
@@ -137,8 +138,26 @@ impl Shell {
 		if !end.eq(&~"") {
 		    argv.push(end.to_owned());
 		}
-		
-		if argv.contains(&~">") {
+		if argv.contains(&~">") && argv.contains(&~"<") {
+		    println("In and out");
+		}else if argv.contains(&~"<") {
+		    let mut found = false;
+		    let mut filename = ~"";
+		    let mut x = 0;
+		    for stringy in argv.clone().move_iter() {
+			if stringy.eq(&~"<") {
+			    break;
+			}
+			x += 1;
+		    }
+		    match argv.get_opt(x+1) {
+			Some(text) => { filename = text.to_owned(); }
+			None => {}
+		    }
+		    argv.remove(x+1);
+		    argv.remove(x);
+		    self.run_cmd_in(program, argv, filename, false);
+		} else if argv.contains(&~">") {
 		    //println("Contains >");
 		    let mut found = false;
 		    let mut filename = ~"";
@@ -162,6 +181,62 @@ impl Shell {
             }
         }
     }
+    
+    
+    fn run_cmd_in(&mut self, program: &str, argv: &[~str], filename: &str, bg: bool) {
+        if self.cmd_exists(program) {
+	    // Old stuff
+            
+            
+            //println("Run command hit");
+            //println(program);
+            
+            
+	    if !bg {
+		// run::process_status(program, argv);
+		let mut whichprocop = ProcessOptions::new();
+		unsafe {
+		    whichprocop.in_fd = Some(libc::fileno(libc::fopen(filename.to_c_str().unwrap(), "r".to_c_str().unwrap())));
+		}
+		whichprocop.out_fd = Some(1);
+		match(Process::new(program, argv, whichprocop)) {
+		    Some(mut process) => {
+			process.finish();
+			std::io::stdio::flush();
+			println("process finished");
+		    }
+		    None => { println("ERROR"); }
+		}
+		
+	    } else {
+		//let f = self.makefunky(program, argv);
+		//let (recvp, recvc): (Port<~str>, Chan<~str>) = Chan::new();
+		//spawn(expr(f(program, argv)));
+		
+		let x = program.clone().to_owned();
+		let y = argv.clone().to_owned();
+		let f = filename.clone().to_owned();
+		
+		spawn(proc() {
+		    let mut whichprocop = ProcessOptions::new();
+		    unsafe {
+			whichprocop.in_fd = Some(libc::fileno(libc::fopen(f.to_c_str().unwrap(), "r".to_c_str().unwrap())));
+		    }
+		    match(Process::new(x, y, whichprocop)) {
+			Some(mut process) => {
+			    process.finish();
+			    std::io::stdio::flush();
+			}
+			None => { println("ERROR"); }
+		    }
+		});
+	    }
+            
+        } else {
+            println!("{:s}: command not found", program);
+        }
+    }
+    
     
     fn run_cmd_out(&mut self, program: &str, argv: &[~str], filename: &str, bg: bool) {
         if self.cmd_exists(program) {
