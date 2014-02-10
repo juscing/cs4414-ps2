@@ -83,9 +83,16 @@ impl Shell {
                 "cd"	=>  { self.changeDir(cmd_line); }
                 "history" =>{ self.history(); }
                 "gcowsay" => { self.cowsay(cmd_line); }
-                _       =>  { self.pipe_syntax(cmd_line); }
+                _       =>  { self.split_semi(cmd_line); }
             }
         }
+    }
+    
+    fn split_semi(&mut self, cmd_line: &str) {
+	let mut commands: ~[~str] = cmd_line.split(';').filter_map(|x| if x != "" { Some(x.trim().to_owned()) } else { None }).to_owned_vec();
+	for stringy in commands.clone().move_iter() {
+	    self.pipe_syntax(stringy);
+	}
     }
     
     fn pipe_syntax(&mut self, cmd_line: &str) {
